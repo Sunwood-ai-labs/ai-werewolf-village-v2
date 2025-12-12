@@ -7,7 +7,7 @@
 Gemini 2.5 Flash を搭載した、自律型AIエージェントたちによる「人狼ゲーム」シミュレーターです。
 個性豊かなAIたちが村人や人狼となり、議論、推理、騙し合いを行いながらゲームを進行します。
 
-![Game Screenshot](demo.png)
+![Game Screenshot](https://github.com/user-attachments/assets/8075124d-6bbe-49db-8dc5-302eba34af6e)
 
 ## ✨ 特徴
 
