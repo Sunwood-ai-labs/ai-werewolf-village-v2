@@ -15,6 +15,8 @@ export const MODELS = [
   { id: 'openrouter/x-ai/grok-4.1-fast', name: 'Grok 4.1 Fast (OpenRouter)' },
 ];
 
+export const VOICE_NAMES = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'];
+
 export const AVATARS = [
   "https://picsum.photos/seed/p1/100/100",
   "https://picsum.photos/seed/p2/100/100",

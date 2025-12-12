@@ -1,4 +1,4 @@
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Modality } from "@google/genai";
 import { Player, Role, GamePhase, LogEntry, ROLE_LABELS } from "../types";
 
 // Helper to sanitize text
@@ -16,6 +16,97 @@ async function withRetry<T>(operation: () => Promise<T>, retries = 3, delay = 10
     throw error;
   }
 }
+
+// --- Audio Utilities for TTS ---
+
+// Base64 decoding
+function decodeBase64(base64: string) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// PCM Audio Decoding
+async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number = 24000,
+  numChannels: number = 1,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
+let audioContext: AudioContext | null = null;
+
+export const playRawAudio = async (base64Audio: string): Promise<void> => {
+  if (!base64Audio) return;
+
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    }
+    
+    // Resume context if suspended (browser autoplay policy)
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
+    const bytes = decodeBase64(base64Audio);
+    const audioBuffer = await decodeAudioData(bytes, audioContext);
+
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    
+    return new Promise((resolve) => {
+      source.onended = () => resolve();
+      source.start(0);
+    });
+  } catch (error) {
+    console.error("Audio Playback Error:", error);
+    return Promise.resolve(); // Fail gracefully
+  }
+};
+
+export const generateSpeech = async (text: string, voiceName: string = 'Puck'): Promise<string | undefined> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: { parts: [{ text }] },
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName },
+          },
+        },
+      },
+    });
+
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    return base64Audio;
+  } catch (error) {
+    console.error("TTS Generation Error:", error);
+    return undefined;
+  }
+};
+
 
 // Strategic Advice based on Role and Day
 const getStrategicAdvice = (role: Role, day: number, phase: GamePhase): string => {

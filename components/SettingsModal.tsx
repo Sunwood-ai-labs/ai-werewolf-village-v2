@@ -20,6 +20,8 @@ interface SettingsModalProps {
   setOpenRouterKey: (val: string) => void;
   roleCounts?: Record<Role, number>;
   setRoleCounts?: (counts: Record<Role, number>) => void;
+  isTtsEnabled?: boolean;
+  setIsTtsEnabled?: (val: boolean) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -30,7 +32,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   gameSpeed, setGameSpeed,
   isGodMode, setIsGodMode,
   openRouterKey, setOpenRouterKey,
-  roleCounts, setRoleCounts
+  roleCounts, setRoleCounts,
+  isTtsEnabled, setIsTtsEnabled
 }) => {
   if (!isOpen) return null;
 
@@ -77,8 +80,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </section>
 
           <hr className="border-slate-800" />
+          
+          {/* Audio Settings */}
+          {setIsTtsEnabled && (
+             <section className="space-y-3">
+                <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">音声設定</h3>
+                <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={isTtsEnabled} 
+                            onChange={(e) => setIsTtsEnabled(e.target.checked)} 
+                            className="w-5 h-5 rounded bg-slate-800 border-slate-600 accent-indigo-500"
+                        />
+                        <div>
+                            <span className="block text-sm font-bold text-slate-200">🗣️ テキスト読み上げ (Gemini TTS)</span>
+                            <span className="block text-xs text-slate-500">
+                                議論の内容をAI音声で読み上げます。プレイヤーごとに声色が変わります。<br/>
+                                <span className="text-yellow-500">※API使用量が増加し、再生に時間がかかる場合があります。</span>
+                            </span>
+                        </div>
+                    </label>
+                </div>
+             </section>
+          )}
 
-          {/* Role Config (Only available when setting up/resetting in theory, but here available always to apply on next init) */}
+           <hr className="border-slate-800" />
+
+          {/* Role Config */}
           {roleCounts && setRoleCounts && (
               <section className="space-y-3">
                  <div className="flex justify-between items-center">
@@ -143,14 +172,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </button>
                     )}
                 </div>
-                <p className="text-[10px] text-slate-500">※ 新規ゲーム開始時のデフォルト、およびシステム生成に使用されます。</p>
             </div>
 
             {/* Individual Players */}
             {players.length > 0 && updatePlayerModel ? (
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 block">プレイヤー別 モデル設定</label>
-                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
+                    <label className="text-xs font-bold text-slate-400 block">プレイヤー別 設定 (モデル / 声)</label>
+                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                         {players.map(player => (
                             <div key={player.id} className="flex items-center gap-3 bg-slate-800/50 p-2 rounded border border-slate-700">
                                 <img src={player.avatar} alt={player.name} className="w-8 h-8 rounded-full border border-slate-600" />
@@ -163,8 +191,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             </span>
                                         )}
                                     </div>
-                                    <div className="text-[10px] text-slate-500 truncate">
-                                        {MODELS.find(m => m.id === player.model)?.name || player.model}
+                                    <div className="flex gap-2 text-[10px] text-slate-500">
+                                        <span className="truncate max-w-[80px]">{MODELS.find(m => m.id === player.model)?.name.split(' ')[0] || player.model}</span>
+                                        {player.voiceName && <span className="text-indigo-400">🔊 {player.voiceName}</span>}
                                     </div>
                                 </div>
                                 <select 
@@ -182,7 +211,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
             ) : (
                 <div className="text-center p-4 border border-dashed border-slate-800 rounded text-slate-500 text-sm">
-                    ゲームを開始すると、プレイヤーごとのモデル設定が可能になります。
+                    ゲームを開始すると、プレイヤーごとの詳細設定が可能になります。
                 </div>
             )}
           </section>

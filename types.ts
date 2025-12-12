@@ -24,6 +24,7 @@ export interface Player {
   voteTargetId?: string; // Who they voted for today
   protected?: boolean; // If protected by bodyguard
   model: string; // The LLM model ID assigned to this player
+  voiceName?: string; // Gemini TTS Voice Name
 }
 
 export interface LogEntry {

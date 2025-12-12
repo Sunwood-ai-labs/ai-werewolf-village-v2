@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { GamePhase, GameState, Player, Role, LogEntry, ROLE_LABELS } from '../types';
-import { DEFAULT_ROLE_COUNTS, NAMES, AVATARS, PERSONALITIES, GM_ID, GM_NAME, MODELS } from '../constants';
-import { generateDiscussion, generateAction } from '../services/geminiService';
+import { DEFAULT_ROLE_COUNTS, NAMES, AVATARS, PERSONALITIES, GM_ID, GM_NAME, MODELS, VOICE_NAMES } from '../constants';
+import { generateDiscussion, generateAction, generateSpeech, playRawAudio } from '../services/geminiService';
 
 const shuffle = <T,>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
 
@@ -21,6 +21,7 @@ export const useGameMaster = (openRouterKey?: string) => {
 
   const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
   const [roleCounts, setRoleCounts] = useState<Record<Role, number>>(DEFAULT_ROLE_COUNTS);
+  const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(false);
   const processingRef = useRef(false);
 
   // --- GM Helpers ---
@@ -112,6 +113,9 @@ export const useGameMaster = (openRouterKey?: string) => {
       const personality = availablePersonalities.length > 0
         ? availablePersonalities.splice(Math.floor(Math.random() * availablePersonalities.length), 1)[0]
         : "普通。特徴はない。";
+      
+      // Assign random voice
+      const voiceName = VOICE_NAMES[Math.floor(Math.random() * VOICE_NAMES.length)];
 
       return {
         id: uuidv4(),
@@ -121,6 +125,7 @@ export const useGameMaster = (openRouterKey?: string) => {
         avatar,
         personality,
         model: selectedModel, // Assign current global/GM model to the player
+        voiceName,
       };
     });
 
@@ -163,6 +168,15 @@ export const useGameMaster = (openRouterKey?: string) => {
       // Use the player's specific model
       const text = await generateDiscussion(speaker, players, logs, GamePhase.DAY_DISCUSSION, dayCount, speaker.model, openRouterKey);
       addLog(text, 'chat', speaker.id);
+      
+      // --- TTS TRIGGER ---
+      if (isTtsEnabled) {
+          const audioData = await generateSpeech(text, speaker.voiceName);
+          if (audioData) {
+              await playRawAudio(audioData);
+          }
+      }
+
     } catch (e: any) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -343,7 +357,7 @@ export const useGameMaster = (openRouterKey?: string) => {
         break;
     }
     processingRef.current = false;
-  }, [state, openRouterKey]); 
+  }, [state, openRouterKey, isTtsEnabled]); 
 
   return {
     state,
@@ -355,6 +369,8 @@ export const useGameMaster = (openRouterKey?: string) => {
     setRoleCounts, // Expose setter
     initGame,
     proceed,
-    setDiscussionRounds
+    setDiscussionRounds,
+    isTtsEnabled,
+    setIsTtsEnabled
   };
 };
