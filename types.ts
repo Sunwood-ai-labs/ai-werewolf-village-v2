@@ -14,6 +14,8 @@ export enum GamePhase {
   GAME_OVER = 'GAME_OVER'
 }
 
+export type Language = 'ja' | 'en';
+
 export interface Player {
   id: string;
   name: string;
@@ -48,6 +50,7 @@ export interface GameState {
   // Discussion Logic
   currentDiscussionRound: number;
   maxDiscussionRounds: number;
+  language: Language;
 }
 
 export interface AgentActionResponse {
@@ -61,6 +64,14 @@ export const ROLE_LABELS: Record<Role, string> = {
   [Role.SEER]: '占い師',
   [Role.BODYGUARD]: '騎士',
   [Role.MEDIUM]: '霊媒師'
+};
+
+export const ROLE_LABELS_EN: Record<Role, string> = {
+  [Role.VILLAGER]: 'Villager',
+  [Role.WEREWOLF]: 'Werewolf',
+  [Role.SEER]: 'Seer',
+  [Role.BODYGUARD]: 'Bodyguard',
+  [Role.MEDIUM]: 'Medium'
 };
 
 export const ROLE_EMOJIS: Record<Role, string> = {

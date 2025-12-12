@@ -1,15 +1,18 @@
 import React from 'react';
-import { Player, ROLE_EMOJIS, ROLE_LABELS, Role } from '../types';
-import { MODELS } from '../constants';
+import { Player, ROLE_EMOJIS, ROLE_LABELS, ROLE_LABELS_EN, Role, Language } from '../types';
+import { MODELS, UI_STRINGS } from '../constants';
 
 interface PlayerCardProps {
   player: Player;
   isGodMode: boolean;
   isSpeaking: boolean;
+  language: Language;
 }
 
-export const PlayerCard: React.FC<PlayerCardProps> = ({ player, isGodMode, isSpeaking }) => {
+export const PlayerCard: React.FC<PlayerCardProps> = ({ player, isGodMode, isSpeaking, language }) => {
   const isDead = !player.isAlive;
+  const labels = language === 'en' ? ROLE_LABELS_EN : ROLE_LABELS;
+  const t = UI_STRINGS[language];
 
   // Determine what to show for role
   // Show role if: God Mode is on, OR player is dead, OR it's me (conceptually, but here we are observer)
@@ -39,11 +42,11 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, isGodMode, isSpe
         />
         {isDead && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
-            <span className="text-xl font-bold text-red-500 font-sans">死亡</span>
+            <span className="text-xl font-bold text-red-500 font-sans">{t.dead}</span>
           </div>
         )}
         {showRole && (
-          <div className="absolute -bottom-2 -right-2 bg-slate-900 rounded-full p-1 border border-slate-600 text-lg" title={ROLE_LABELS[player.role]}>
+          <div className="absolute -bottom-2 -right-2 bg-slate-900 rounded-full p-1 border border-slate-600 text-lg" title={labels[player.role]}>
             {ROLE_EMOJIS[player.role]}
           </div>
         )}
@@ -61,10 +64,10 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, isGodMode, isSpe
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
             player.role === Role.WEREWOLF ? 'bg-red-900 text-red-100' : 'bg-blue-900 text-blue-100'
           }`}>
-            {ROLE_LABELS[player.role]}
+            {labels[player.role]}
           </span>
         ) : (
-          <span className="text-xs text-slate-500">???</span>
+          <span className="text-xs text-slate-500">{t.unknown}</span>
         )}
       </div>
       

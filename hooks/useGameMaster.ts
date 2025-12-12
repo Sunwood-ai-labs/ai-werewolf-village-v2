@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { GamePhase, GameState, Player, Role, LogEntry, ROLE_LABELS } from '../types';
-import { DEFAULT_ROLE_COUNTS, NAMES, AVATARS, PERSONALITIES, GM_ID, GM_NAME, MODELS, VOICE_NAMES } from '../constants';
+import { GamePhase, GameState, Player, Role, LogEntry, ROLE_LABELS, Language } from '../types';
+import { DEFAULT_ROLE_COUNTS, NAMES_JP, NAMES_EN, AVATARS, PERSONALITIES_JP, PERSONALITIES_EN, GM_ID, MODELS, VOICE_NAMES } from '../constants';
 import { generateDiscussion, generateAction, generateSpeech, playRawAudio } from '../services/geminiService';
 
 const shuffle = <T,>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
@@ -17,6 +17,7 @@ export const useGameMaster = (openRouterKey?: string) => {
     activeSpeakerId: null,
     currentDiscussionRound: 1,
     maxDiscussionRounds: 3,
+    language: 'ja',
   });
 
   const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
@@ -48,6 +49,10 @@ export const useGameMaster = (openRouterKey?: string) => {
   const setDiscussionRounds = (rounds: number) => {
       setState(prev => ({ ...prev, maxDiscussionRounds: rounds }));
   };
+
+  const setLanguage = (lang: Language) => {
+      setState(prev => ({ ...prev, language: lang }));
+  };
   
   // Updates a single player's model
   const updatePlayerModel = (playerId: string, modelId: string) => {
@@ -63,15 +68,17 @@ export const useGameMaster = (openRouterKey?: string) => {
   const checkWinCondition = (currentPlayers: Player[]) => {
     const aliveWolves = currentPlayers.filter(p => p.isAlive && p.role === Role.WEREWOLF).length;
     const aliveHumans = currentPlayers.filter(p => p.isAlive && p.role !== Role.WEREWOLF).length;
+    
+    const isEn = state.language === 'en';
 
     if (aliveWolves === 0) {
       setState(prev => ({ ...prev, winner: 'VILLAGERS', phase: GamePhase.GAME_OVER }));
-      addLog("人狼は全滅しました。村人陣営の勝利です！", 'system');
+      addLog(isEn ? "All Werewolves have been eliminated. Villagers win!" : "人狼は全滅しました。村人陣営の勝利です！", 'system');
       return true;
     }
     if (aliveWolves >= aliveHumans) {
       setState(prev => ({ ...prev, winner: 'WEREWOLVES', phase: GamePhase.GAME_OVER }));
-      addLog("人狼の数が村人を上回りました。人狼陣営の勝利です！", 'system');
+      addLog(isEn ? "Werewolves outnumber villagers. Werewolves win!" : "人狼の数が村人を上回りました。人狼陣営の勝利です！", 'system');
       return true;
     }
     return false;
@@ -83,28 +90,28 @@ export const useGameMaster = (openRouterKey?: string) => {
     // Construct roles array based on counts
     const roles: Role[] = [];
     Object.entries(roleCounts).forEach(([role, count]) => {
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < (count as number); i++) {
         roles.push(role as Role);
       }
     });
 
     if (roles.length === 0) {
-        addLog("プレイヤー人数が0人です。設定を確認してください。", 'system');
+        addLog(state.language === 'en' ? "Player count is 0. Please check settings." : "プレイヤー人数が0人です。設定を確認してください。", 'system');
         return;
     }
 
     const shuffledRoles = shuffle(roles);
     
-    // Prepare metadata pools (expand if necessary)
-    let availableNames = [...NAMES];
+    // Prepare metadata pools based on language
+    let availableNames = [...(state.language === 'en' ? NAMES_EN : NAMES_JP)];
     let availableAvatars = [...AVATARS];
-    let availablePersonalities = [...PERSONALITIES];
+    let availablePersonalities = [...(state.language === 'en' ? PERSONALITIES_EN : PERSONALITIES_JP)];
 
     const newPlayers: Player[] = shuffledRoles.map((role, idx) => {
       // Handle insufficient metadata gracefully
       const name = availableNames.length > 0 
         ? availableNames.splice(Math.floor(Math.random() * availableNames.length), 1)[0]
-        : `プレイヤー${idx + 1}`;
+        : `Player${idx + 1}`;
       
       const avatar = availableAvatars.length > 0
         ? availableAvatars.splice(Math.floor(Math.random() * availableAvatars.length), 1)[0]
@@ -112,7 +119,7 @@ export const useGameMaster = (openRouterKey?: string) => {
 
       const personality = availablePersonalities.length > 0
         ? availablePersonalities.splice(Math.floor(Math.random() * availablePersonalities.length), 1)[0]
-        : "普通。特徴はない。";
+        : "Normal.";
       
       // Assign random voice
       const voiceName = VOICE_NAMES[Math.floor(Math.random() * VOICE_NAMES.length)];
@@ -129,6 +136,11 @@ export const useGameMaster = (openRouterKey?: string) => {
       };
     });
 
+    const isEn = state.language === 'en';
+    const startMsg = isEn
+        ? `Game Start. ${newPlayers.length} players. Check your roles.`
+        : `これより、人狼ゲームを開始します。参加者は${newPlayers.length}名です。各自、役職を確認してください。`;
+
     setState(prev => ({
       ...prev,
       players: newPlayers,
@@ -136,27 +148,32 @@ export const useGameMaster = (openRouterKey?: string) => {
       dayCount: 1,
       turnIndex: 0,
       currentDiscussionRound: 1,
-      logs: [{ id: uuidv4(), phase: GamePhase.SETUP, day: 1, content: `これより、人狼ゲームを開始します。参加者は${newPlayers.length}名です。各自、役職を確認してください。`, type: "system", speakerId: GM_ID }],
+      logs: [{ id: uuidv4(), phase: GamePhase.SETUP, day: 1, content: startMsg, type: "system", speakerId: GM_ID }],
       winner: null,
       activeSpeakerId: null,
     }));
   };
 
   const handleDayDiscussion = async () => {
-    const { players, logs, turnIndex, dayCount, currentDiscussionRound, maxDiscussionRounds } = state;
+    const { players, logs, turnIndex, dayCount, currentDiscussionRound, maxDiscussionRounds, language } = state;
     const alivePlayers = players.filter(p => p.isAlive);
+    const isEn = language === 'en';
 
     // End of round check
     if (turnIndex >= alivePlayers.length) {
         if (currentDiscussionRound < maxDiscussionRounds) {
             // Start next round
             setState(prev => ({ ...prev, currentDiscussionRound: prev.currentDiscussionRound + 1, turnIndex: 0 }));
-            addLog(`議論は続きます（ラウンド ${currentDiscussionRound + 1}/${maxDiscussionRounds}）`, 'system');
+            addLog(isEn 
+                ? `Discussion continues (Round ${currentDiscussionRound + 1}/${maxDiscussionRounds})`
+                : `議論は続きます（ラウンド ${currentDiscussionRound + 1}/${maxDiscussionRounds}）`, 'system');
             return;
         } else {
             // End discussion
             setState(prev => ({ ...prev, phase: GamePhase.DAY_VOTE, turnIndex: 0 }));
-            addLog("議論終了です。これより処刑投票に移ります。", 'system');
+            addLog(isEn 
+                ? "Discussion ended. Moving to Vote."
+                : "議論終了です。これより処刑投票に移ります。", 'system');
             return;
         }
     }
@@ -166,7 +183,7 @@ export const useGameMaster = (openRouterKey?: string) => {
 
     try {
       // Use the player's specific model
-      const text = await generateDiscussion(speaker, players, logs, GamePhase.DAY_DISCUSSION, dayCount, speaker.model, openRouterKey);
+      const text = await generateDiscussion(speaker, players, logs, GamePhase.DAY_DISCUSSION, dayCount, speaker.model, openRouterKey, language);
       addLog(text, 'chat', speaker.id);
       
       // --- TTS TRIGGER ---
@@ -180,15 +197,16 @@ export const useGameMaster = (openRouterKey?: string) => {
     } catch (e: any) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
-      addLog(`（エラー発生: ${errorMsg}）`, 'system', speaker.id);
+      addLog(`(Error: ${errorMsg})`, 'system', speaker.id);
     }
 
     setState(prev => ({ ...prev, activeSpeakerId: null, turnIndex: prev.turnIndex + 1 }));
   };
 
   const handleDayVote = async () => {
-    const { players, logs, turnIndex, dayCount } = state;
+    const { players, logs, turnIndex, dayCount, language } = state;
     const alivePlayers = players.filter(p => p.isAlive);
+    const isEn = language === 'en';
 
     if (turnIndex >= alivePlayers.length) {
       // Tally votes
@@ -216,7 +234,9 @@ export const useGameMaster = (openRouterKey?: string) => {
       if (executedPlayerId && !tie) {
         const victim = players.find(p => p.id === executedPlayerId);
         if (victim) {
-          addLog(`投票の結果、${victim.name} が処刑されます。`, 'death');
+          addLog(isEn 
+            ? `Vote Result: ${victim.name} is executed.`
+            : `投票の結果、${victim.name} が処刑されます。`, 'death');
           const updatedPlayers = players.map(p => 
             p.id === executedPlayerId ? { ...p, isAlive: false } : p
           );
@@ -224,7 +244,9 @@ export const useGameMaster = (openRouterKey?: string) => {
           if (checkWinCondition(updatedPlayers)) return;
         }
       } else {
-        addLog("投票が割れたため、本日の処刑は見送られました。", 'system');
+        addLog(isEn 
+            ? "Tied vote. No execution today."
+            : "投票が割れたため、本日の処刑は見送られました。", 'system');
       }
 
       setState(prev => ({ 
@@ -232,7 +254,9 @@ export const useGameMaster = (openRouterKey?: string) => {
         phase: GamePhase.NIGHT_ACTION, 
         turnIndex: 0 
       }));
-      addLog("恐ろしい夜がやってきます... 能力者は行動してください。", 'system');
+      addLog(isEn 
+        ? "Night falls... Special roles, take action."
+        : "恐ろしい夜がやってきます... 能力者は行動してください。", 'system');
       
       updatePlayers(curr => curr.map(p => ({ ...p, voteTargetId: undefined, protected: false })));
       return;
@@ -243,25 +267,28 @@ export const useGameMaster = (openRouterKey?: string) => {
 
     try {
       // Use voter's specific model
-      const action = await generateAction(voter, players, logs, GamePhase.DAY_VOTE, dayCount, voter.model, openRouterKey);
+      const action = await generateAction(voter, players, logs, GamePhase.DAY_VOTE, dayCount, voter.model, openRouterKey, language);
       const target = players.find(p => p.id === action.targetId);
-      addLog(`${target?.name} に投票。理由: ${action.reasoning}`, 'action', voter.id);
+      addLog(isEn 
+        ? `Voted for ${target?.name}. Reason: ${action.reasoning}`
+        : `${target?.name} に投票。理由: ${action.reasoning}`, 'action', voter.id);
       
       updatePlayers(curr => curr.map(p => p.id === voter.id ? { ...p, voteTargetId: action.targetId } : p));
     } catch (e: any) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
-      addLog(`（投票エラー: ${errorMsg}）`, 'system', voter.id);
+      addLog(`(Vote Error: ${errorMsg})`, 'system', voter.id);
     }
 
     setState(prev => ({ ...prev, activeSpeakerId: null, turnIndex: prev.turnIndex + 1 }));
   };
 
   const handleNightAction = async () => {
-    const { players, logs, turnIndex, dayCount } = state;
+    const { players, logs, turnIndex, dayCount, language } = state;
     const actingPlayers = players.filter(p => 
       p.isAlive && (p.role === Role.WEREWOLF || p.role === Role.SEER || p.role === Role.BODYGUARD)
     );
+    const isEn = language === 'en';
 
     if (turnIndex >= actingPlayers.length) {
       // Resolve Night
@@ -283,12 +310,18 @@ export const useGameMaster = (openRouterKey?: string) => {
         
         if (victim && !isProtected) {
           currentPlayers = currentPlayers.map(p => p.id === killTargetId ? { ...p, isAlive: false } : p);
-          addLog(`昨晩、${victim.name} が無惨な姿で発見されました...`, 'death');
+          addLog(isEn 
+            ? `Last night, ${victim.name} was found dead...`
+            : `昨晩、${victim.name} が無惨な姿で発見されました...`, 'death');
         } else if (victim && isProtected) {
-          addLog(`昨晩、${victim.name} は何者かに襲われましたが、一命を取り留めました！`, 'action');
+          addLog(isEn
+            ? `Last night, ${victim.name} was attacked but survived!`
+            : `昨晩、${victim.name} は何者かに襲われましたが、一命を取り留めました！`, 'action');
         }
       } else {
-        addLog(`昨晩は誰も襲われませんでした。平和な朝です。`, 'system');
+        addLog(isEn
+            ? "No one was attacked last night. Peaceful morning."
+            : `昨晩は誰も襲われませんでした。平和な朝です。`, 'system');
       }
 
       updatePlayers(() => currentPlayers);
@@ -301,7 +334,9 @@ export const useGameMaster = (openRouterKey?: string) => {
         turnIndex: 0,
         currentDiscussionRound: 1, // Reset discussion round for next day
       }));
-      addLog(`${dayCount + 1} 日目の朝です。議論を開始してください。`, 'system');
+      addLog(isEn
+        ? `Day ${dayCount + 1} begins. Discussion start.`
+        : `${dayCount + 1} 日目の朝です。議論を開始してください。`, 'system');
       
       updatePlayers(curr => curr.map(p => ({ ...p, voteTargetId: undefined })));
       return;
@@ -312,7 +347,7 @@ export const useGameMaster = (openRouterKey?: string) => {
 
     try {
       // Use actor's specific model
-      const action = await generateAction(actor, players, logs, GamePhase.NIGHT_ACTION, dayCount, actor.model, openRouterKey);
+      const action = await generateAction(actor, players, logs, GamePhase.NIGHT_ACTION, dayCount, actor.model, openRouterKey, language);
       
       updatePlayers(curr => curr.map(p => p.id === actor.id ? { ...p, voteTargetId: action.targetId } : p));
       
@@ -322,20 +357,29 @@ export const useGameMaster = (openRouterKey?: string) => {
       if (actor.role === Role.SEER) {
         const isWolf = target?.role === Role.WEREWOLF;
         // Visible only to Seer
-        addLog(`(占い結果) ${target?.name} は ${isWolf ? '【黒(人狼)】' : '【白(人間)】'} でした。`, 'action', actor.id, [actor.id]);
+        const resText = isEn
+            ? `(Divination) ${target?.name} is [${isWolf ? 'BLACK(Wolf)' : 'WHITE(Human)'}].`
+            : `(占い結果) ${target?.name} は ${isWolf ? '【黒(人狼)】' : '【白(人間)】'} でした。`;
+        addLog(resText, 'action', actor.id, [actor.id]);
       } else if (actor.role === Role.WEREWOLF) {
         // Visible only to Wolves
         const allWolves = players.filter(p => p.role === Role.WEREWOLF).map(p => p.id);
-        addLog(`(襲撃セット) ${target?.name} を狙います。`, 'action', actor.id, allWolves);
+        const resText = isEn
+            ? `(Attack Target) Aiming for ${target?.name}.`
+            : `(襲撃セット) ${target?.name} を狙います。`;
+        addLog(resText, 'action', actor.id, allWolves);
       } else if (actor.role === Role.BODYGUARD) {
         // Visible only to Bodyguard
-        addLog(`(護衛セット) ${target?.name} を守ります。`, 'action', actor.id, [actor.id]);
+        const resText = isEn
+            ? `(Guard Target) Protecting ${target?.name}.`
+            : `(護衛セット) ${target?.name} を守ります。`;
+        addLog(resText, 'action', actor.id, [actor.id]);
       }
       
     } catch (e: any) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
-      addLog(`（行動エラー: ${errorMsg}）`, 'system', actor.id);
+      addLog(`(Action Error: ${errorMsg})`, 'system', actor.id);
     }
 
     setState(prev => ({ ...prev, activeSpeakerId: null, turnIndex: prev.turnIndex + 1 }));
@@ -371,6 +415,7 @@ export const useGameMaster = (openRouterKey?: string) => {
     proceed,
     setDiscussionRounds,
     isTtsEnabled,
-    setIsTtsEnabled
+    setIsTtsEnabled,
+    setLanguage
   };
 };

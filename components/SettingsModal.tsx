@@ -1,6 +1,6 @@
 import React from 'react';
-import { MODELS } from '../constants';
-import { Player, ROLE_LABELS, ROLE_EMOJIS, Role } from '../types';
+import { MODELS, UI_STRINGS } from '../constants';
+import { Player, ROLE_LABELS, ROLE_LABELS_EN, ROLE_EMOJIS, Role, Language } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -22,6 +22,7 @@ interface SettingsModalProps {
   setRoleCounts?: (counts: Record<Role, number>) => void;
   isTtsEnabled?: boolean;
   setIsTtsEnabled?: (val: boolean) => void;
+  language: Language;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -33,12 +34,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isGodMode, setIsGodMode,
   openRouterKey, setOpenRouterKey,
   roleCounts, setRoleCounts,
-  isTtsEnabled, setIsTtsEnabled
+  isTtsEnabled, setIsTtsEnabled,
+  language
 }) => {
   if (!isOpen) return null;
 
+  const t = UI_STRINGS[language];
+  const roleLabels = language === 'en' ? ROLE_LABELS_EN : ROLE_LABELS;
+
   const totalPlayers = roleCounts 
-    ? Object.values(roleCounts).reduce((a, b) => a + b, 0)
+    ? (Object.values(roleCounts) as number[]).reduce((a, b) => a + b, 0)
     : 0;
 
   const handleRoleCountChange = (role: Role, delta: number) => {
@@ -54,7 +59,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         
         <div className="bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center shrink-0">
           <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-            ⚙️ ゲーム設定
+            {t.settingsTitle}
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
         </div>
@@ -64,11 +69,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* API Settings */}
           <section className="space-y-3">
              <div className="flex justify-between items-center">
-               <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">API 設定</h3>
-               <span className="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded">オプション</span>
+               <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">{t.sectionApi}</h3>
+               <span className="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded">Optional</span>
              </div>
              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-2">
-                <label className="text-xs text-slate-400">OpenRouter API Key (Claude/GPT等を使用する場合)</label>
+                <label className="text-xs text-slate-400">{t.labelApiKey}</label>
                 <input 
                   type="password"
                   value={openRouterKey}
@@ -84,7 +89,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Audio Settings */}
           {setIsTtsEnabled && (
              <section className="space-y-3">
-                <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">音声設定</h3>
+                <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">{t.sectionAudio}</h3>
                 <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
                     <label className="flex items-center gap-3 cursor-pointer">
                         <input 
@@ -94,10 +99,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             className="w-5 h-5 rounded bg-slate-800 border-slate-600 accent-indigo-500"
                         />
                         <div>
-                            <span className="block text-sm font-bold text-slate-200">🗣️ テキスト読み上げ (Gemini TTS)</span>
+                            <span className="block text-sm font-bold text-slate-200">{t.labelTts}</span>
                             <span className="block text-xs text-slate-500">
-                                議論の内容をAI音声で読み上げます。プレイヤーごとに声色が変わります。<br/>
-                                <span className="text-yellow-500">※API使用量が増加し、再生に時間がかかる場合があります。</span>
+                                {t.descTts}
                             </span>
                         </div>
                     </label>
@@ -111,15 +115,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {roleCounts && setRoleCounts && (
               <section className="space-y-3">
                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">配役・人数設定</h3>
-                    <span className="text-xs font-mono bg-indigo-900 text-indigo-100 px-2 py-1 rounded">合計: {totalPlayers}人</span>
+                    <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">{t.sectionRoles}</h3>
+                    <span className="text-xs font-mono bg-indigo-900 text-indigo-100 px-2 py-1 rounded">{t.total}: {totalPlayers}</span>
                  </div>
                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {Object.values(Role).map(role => (
                         <div key={role} className="flex items-center justify-between p-2 bg-slate-900 rounded border border-slate-700">
                              <div className="flex items-center gap-2">
                                  <span className="text-xl">{ROLE_EMOJIS[role]}</span>
-                                 <span className="text-sm font-bold text-slate-300">{ROLE_LABELS[role]}</span>
+                                 <span className="text-sm font-bold text-slate-300">{roleLabels[role]}</span>
                              </div>
                              <div className="flex items-center gap-3">
                                  <button 
@@ -140,7 +144,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                     ))}
                  </div>
-                 <p className="text-[10px] text-slate-500 text-right">※ 変更は次回の「ゲーム開始」または「リセット」時に反映されます。</p>
+                 <p className="text-[10px] text-slate-500 text-right">{t.noteReflect}</p>
               </section>
           )}
 
@@ -148,11 +152,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* Model Settings */}
           <section className="space-y-4">
-            <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">モデル設定</h3>
+            <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">{t.sectionModel}</h3>
             
             {/* Global / GM Model */}
             <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3">
-                <label className="text-xs font-bold text-slate-300 block">ゲームマスター / デフォルトモデル</label>
+                <label className="text-xs font-bold text-slate-300 block">{t.labelGmModel}</label>
                 <div className="flex gap-2">
                     <select 
                       value={selectedModel} 
@@ -168,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             onClick={() => setAllPlayerModels(selectedModel)}
                             className="bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-bold px-3 py-2 rounded transition-colors whitespace-nowrap"
                         >
-                            全員に適用
+                            {t.btnApplyAll}
                         </button>
                     )}
                 </div>
@@ -177,7 +181,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Individual Players */}
             {players.length > 0 && updatePlayerModel ? (
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 block">プレイヤー別 設定 (モデル / 声)</label>
+                    <label className="text-xs font-bold text-slate-400 block">{t.labelPlayerModel}</label>
                     <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                         {players.map(player => (
                             <div key={player.id} className="flex items-center gap-3 bg-slate-800/50 p-2 rounded border border-slate-700">
@@ -187,7 +191,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <span className="text-sm font-bold text-slate-200 truncate">{player.name}</span>
                                         {isGodMode && (
                                             <span className="text-[10px] bg-slate-700 px-1.5 rounded text-slate-300">
-                                                {ROLE_EMOJIS[player.role]} {ROLE_LABELS[player.role]}
+                                                {ROLE_EMOJIS[player.role]} {roleLabels[player.role]}
                                             </span>
                                         )}
                                     </div>
@@ -211,7 +215,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
             ) : (
                 <div className="text-center p-4 border border-dashed border-slate-800 rounded text-slate-500 text-sm">
-                    ゲームを開始すると、プレイヤーごとの詳細設定が可能になります。
+                    {t.msgStartFirst}
                 </div>
             )}
           </section>
@@ -221,7 +225,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Game Parameters */}
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">議論の長さ (ターン数)</label>
+              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">{t.labelDuration}</label>
               <div className="flex items-center gap-3">
                  <input 
                    type="range" min="1" max="10" step="1" 
@@ -234,7 +238,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">再生速度 (ms)</label>
+              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">{t.labelSpeed}</label>
               <div className="flex items-center gap-3">
                  <input 
                    type="range" min="500" max="5000" step="500" 
@@ -257,8 +261,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="w-5 h-5 rounded bg-slate-800 border-slate-600 accent-indigo-500"
                   />
                   <div>
-                    <span className="block text-sm font-bold text-slate-200">神の視点モード</span>
-                    <span className="block text-xs text-slate-500">全てのプレイヤーの役職と、人狼・占い師の秘密の会話を閲覧できます。</span>
+                    <span className="block text-sm font-bold text-slate-200">{t.labelGodMode}</span>
+                    <span className="block text-xs text-slate-500">{t.descGodMode}</span>
                   </div>
               </label>
            </div>
@@ -267,7 +271,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         <div className="bg-slate-800 p-4 border-t border-slate-700 text-right shrink-0">
            <button onClick={onClose} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg transition-all">
-             閉じる
+             {t.btnClose}
            </button>
         </div>
 

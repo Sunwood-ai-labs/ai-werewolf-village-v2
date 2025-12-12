@@ -1,5 +1,5 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Modality } from "@google/genai";
-import { Player, Role, GamePhase, LogEntry, ROLE_LABELS } from "../types";
+import { Player, Role, GamePhase, LogEntry, ROLE_LABELS, ROLE_LABELS_EN, Language } from "../types";
 
 // Helper to sanitize text
 const cleanText = (text: string) => text.replace(/`/g, '').trim();
@@ -109,101 +109,160 @@ export const generateSpeech = async (text: string, voiceName: string = 'Puck'): 
 
 
 // Strategic Advice based on Role and Day
-const getStrategicAdvice = (role: Role, day: number, phase: GamePhase): string => {
-  const common = "感情的にならず、論理的に振る舞ってください。";
-
-  switch (role) {
-    case Role.VILLAGER:
-      return `
-        【村人の戦略】
-        - 情報を隠している人物や、発言に矛盾がある人物を探してください。
-        - 寡黙な人物は疑われやすいので、適度に発言して潔白をアピールしてください。
-        - 占い師が二人出た場合は、両方の真偽を慎重に見極めてください。
-      `;
-    
-    case Role.SEER:
-      if (day === 1) {
-        return `
-          【占い師の戦略：重要】
-          - 初日または2日目の早い段階で、必ず「自分が占い師である」とカミングアウト（CO）してください。
-          - 誰を占ってどういう結果だったか（白＝人間、黒＝人狼）を明確に伝えてください。
-          - 潜伏（COしないこと）は、村の不利益になります。
-        `;
+const getStrategicAdvice = (role: Role, day: number, phase: GamePhase, lang: Language): string => {
+  if (lang === 'en') {
+      const common = "Act logically and do not get too emotional.";
+      switch (role) {
+        case Role.VILLAGER:
+          return `
+            [Villager Strategy]
+            - Identify players who are hiding info or contradicting themselves.
+            - Staying too silent makes you suspicious; speak enough to prove innocence.
+            - If two Seers appear, judge carefully who is lying.
+          `;
+        case Role.SEER:
+          if (day === 1) {
+            return `
+              [Seer Strategy: CRITICAL]
+              - You MUST reveal (Come Out) that you are the Seer early on Day 1 or Day 2.
+              - Clearly state who you divined and the result (White=Human, Black=Werewolf).
+              - Hiding your role hurts the village.
+            `;
+          }
+          return `
+            [Seer Strategy]
+            - Report last night's divination results immediately.
+            - If there is a counter-Seer (fake), argue logically why you are the real one.
+          `;
+        case Role.BODYGUARD:
+          return `
+            [Bodyguard Strategy: CRITICAL]
+            - NEVER reveal that you are the Bodyguard. If you do, wolves will kill you.
+            - Act like a normal Villager in discussions.
+            - At night, prioritize protecting the person you believe is the real Seer.
+          `;
+        case Role.WEREWOLF:
+          return `
+            [Werewolf Strategy]
+            - Never let them know you are a wolf.
+            - Pretend to be a villager and use plausible reasoning to mislead others.
+            - If the real Seer reveals themselves, it is a valid tactic to lie and claim YOU are the Seer (Counter-CO) to cause confusion.
+            - Don't defend other wolves too obviously. Sometimes voting for a partner (bussing) is necessary.
+          `;
+        default: return common;
       }
-      return `
-        【占い師の戦略】
-        - 昨晩の占い結果を速やかに報告してください。
-        - 対抗（偽の占い師）がいる場合は、自分が本物であることを論理的に主張してください。
-      `;
-
-    case Role.BODYGUARD:
-      return `
-        【騎士の戦略：最重要】
-        - **絶対に自分が騎士であることを明かさない（カミングアウトしない）でください**。正体がバレると人狼に襲撃されます。
-        - 議論ではただの村人として振る舞ってください。
-        - 夜の護衛は、本物だと思われる占い師を優先して守ってください。
-      `;
-
-    case Role.WEREWOLF:
-      return `
-        【人狼の戦略】
-        - 自分が人狼であることは絶対に悟られないでください。
-        - 村人のふりをして、もっともらしい推理でミスリードを誘ってください。
-        - 占い師が本物を名乗り出た場合、あえて自分も「私が占い師だ」と嘘をついて（対抗CO）、場を混乱させるのも有効な戦略です。
-        - 仲間（他の人狼）を露骨にかばうと怪しまれます。時には仲間に投票するライン切りも必要です。
-      `;
-      
-    default:
-      return common;
+  } else {
+    // JAPANESE
+      const common = "感情的にならず、論理的に振る舞ってください。";
+      switch (role) {
+        case Role.VILLAGER:
+          return `
+            【村人の戦略】
+            - 情報を隠している人物や、発言に矛盾がある人物を探してください。
+            - 寡黙な人物は疑われやすいので、適度に発言して潔白をアピールしてください。
+            - 占い師が二人出た場合は、両方の真偽を慎重に見極めてください。
+          `;
+        case Role.SEER:
+          if (day === 1) {
+            return `
+              【占い師の戦略：重要】
+              - 初日または2日目の早い段階で、必ず「自分が占い師である」とカミングアウト（CO）してください。
+              - 誰を占ってどういう結果だったか（白＝人間、黒＝人狼）を明確に伝えてください。
+              - 潜伏（COしないこと）は、村の不利益になります。
+            `;
+          }
+          return `
+            【占い師の戦略】
+            - 昨晩の占い結果を速やかに報告してください。
+            - 対抗（偽の占い師）がいる場合は、自分が本物であることを論理的に主張してください。
+          `;
+        case Role.BODYGUARD:
+          return `
+            【騎士の戦略：最重要】
+            - **絶対に自分が騎士であることを明かさない（カミングアウトしない）でください**。正体がバレると人狼に襲撃されます。
+            - 議論ではただの村人として振る舞ってください。
+            - 夜の護衛は、本物だと思われる占い師を優先して守ってください。
+          `;
+        case Role.WEREWOLF:
+          return `
+            【人狼の戦略】
+            - 自分が人狼であることは絶対に悟られないでください。
+            - 村人のふりをして、もっともらしい推理でミスリードを誘ってください。
+            - 占い師が本物を名乗り出た場合、あえて自分も「私が占い師だ」と嘘をついて（対抗CO）、場を混乱させるのも有効な戦略です。
+            - 仲間（他の人狼）を露骨にかばうと怪しまれます。時には仲間に投票するライン切りも必要です。
+          `;
+        default: return common;
+      }
   }
 };
 
-const getRoleDescription = (role: Role) => {
-  switch (role) {
-    case Role.WEREWOLF: return "あなたは【人狼】です。目的：正体がバレないように振る舞い、村人陣営を敗北させること。";
-    case Role.SEER: return "あなたは【占い師】です。目的：人狼を見つけること。毎晩一人を占えます。";
-    case Role.BODYGUARD: return "あなたは【騎士】です。目的：村人を守ること。毎晩一人を護衛できます。";
-    default: return "あなたは【村人】です。特別な能力はありません。議論で人狼を探してください。";
+const getRoleDescription = (role: Role, lang: Language) => {
+  if (lang === 'en') {
+      switch (role) {
+        case Role.WEREWOLF: return "You are a [WEREWOLF]. Goal: Deceive humans and kill them all.";
+        case Role.SEER: return "You are the [SEER]. Goal: Find Werewolves. You can divine one person every night.";
+        case Role.BODYGUARD: return "You are the [BODYGUARD]. Goal: Protect villagers. You can guard one person every night.";
+        default: return "You are a [VILLAGER]. No special powers. Deduce who the wolves are.";
+      }
+  } else {
+      switch (role) {
+        case Role.WEREWOLF: return "あなたは【人狼】です。目的：正体がバレないように振る舞い、村人陣営を敗北させること。";
+        case Role.SEER: return "あなたは【占い師】です。目的：人狼を見つけること。毎晩一人を占えます。";
+        case Role.BODYGUARD: return "あなたは【騎士】です。目的：村人を守ること。毎晩一人を護衛できます。";
+        default: return "あなたは【村人】です。特別な能力はありません。議論で人狼を探してください。";
+      }
   }
 };
 
-const buildContext = (activePlayer: Player, players: Player[], logs: LogEntry[], currentPhase: GamePhase, currentDay: number) => {
-  // Optimize: Use only last 30 logs to prevent token overflow and focus on immediate context
+const buildContext = (activePlayer: Player, players: Player[], logs: LogEntry[], currentPhase: GamePhase, currentDay: number, lang: Language) => {
   const recentLogs = logs.slice(-30);
   
-  // FILTER: Only show public logs OR logs visible to this specific player
   const visibleLogs = recentLogs
     .filter(l => !l.visibleTo || l.visibleTo.includes(activePlayer.id))
     .map(l => {
-      const dayPrefix = `[${l.day}日目/${l.phase === GamePhase.NIGHT_ACTION ? '夜' : '昼'}]`;
-      if (l.type === 'system' || l.type === 'death') return `${dayPrefix} [GM]: ${l.content}`;
+      const isNight = l.phase === GamePhase.NIGHT_ACTION;
+      const dayLabel = lang === 'en' ? `[Day ${l.day}/${isNight ? 'Night' : 'Day'}]` : `[${l.day}日目/${isNight ? '夜' : '昼'}]`;
+      
+      if (l.type === 'system' || l.type === 'death') return `${dayLabel} [GM]: ${l.content}`;
       
       const speaker = players.find(p => p.id === l.speakerId);
-      // Mark private logs explicitly in context
-      const privateMark = l.visibleTo ? "【(重要) あなただけの秘密情報】" : "";
-      return `${dayPrefix} [${speaker?.name || '不明'}]: ${privateMark} ${l.content}`;
+      const privateMark = l.visibleTo ? (lang === 'en' ? "[SECRET INFO] " : "【(重要) あなただけの秘密情報】") : "";
+      return `${dayLabel} [${speaker?.name || 'Unknown'}]: ${privateMark} ${l.content}`;
     });
 
   const alivePlayersList = players.filter(p => p.isAlive).map(p => {
-    // If active player is Wolf, denote teammates
-    let info = `ID:${p.id} 名前:${p.name}`;
+    let info = `ID:${p.id} Name:${p.name}`;
     if (activePlayer.role === Role.WEREWOLF && p.role === Role.WEREWOLF && p.id !== activePlayer.id) {
-        info += " (味方の人狼)";
+        info += lang === 'en' ? " (Ally Wolf)" : " (味方の人狼)";
     }
     return info;
   }).join('\n');
 
-  return `
-    【現在の状況】
-    日数: ${currentDay}日目
-    フェーズ: ${currentPhase}
-    
-    【生存者リスト】
-    ${alivePlayersList}
+  if (lang === 'en') {
+      return `
+        [Current Situation]
+        Day: ${currentDay}
+        Phase: ${currentPhase}
+        
+        [Survivors]
+        ${alivePlayersList}
 
-    【直近の会話ログ（公開情報 + あなたの記憶）】
-    ${visibleLogs.join('\n')}
-  `;
+        [Recent Logs (Public + Your Memory)]
+        ${visibleLogs.join('\n')}
+      `;
+  } else {
+      return `
+        【現在の状況】
+        日数: ${currentDay}日目
+        フェーズ: ${currentPhase}
+        
+        【生存者リスト】
+        ${alivePlayersList}
+
+        【直近の会話ログ（公開情報 + あなたの記憶）】
+        ${visibleLogs.join('\n')}
+      `;
+  }
 };
 
 const SAFETY_SETTINGS = [
@@ -221,44 +280,80 @@ export const generateDiscussion = async (
   currentPhase: GamePhase,
   currentDay: number,
   modelName: string = 'gemini-2.5-flash',
-  openRouterKey?: string
+  openRouterKey?: string,
+  lang: Language = 'ja'
 ): Promise<string> => {
   
-  // Strategy Injection
-  const strategicAdvice = getStrategicAdvice(activePlayer.role, currentDay, currentPhase);
+  const strategicAdvice = getStrategicAdvice(activePlayer.role, currentDay, currentPhase, lang);
+  const roleLabel = lang === 'en' ? ROLE_LABELS_EN[activePlayer.role] : ROLE_LABELS[activePlayer.role];
 
-  const systemInstruction = `
-    これはフィクションの「人狼ゲーム」のシミュレーションです。
-    あなたはプレイヤー「${activePlayer.name}」として振る舞ってください。
-    
-    【キャラクター情報】
-    役職: ${ROLE_LABELS[activePlayer.role]}
-    性格: ${activePlayer.personality}
-    ${getRoleDescription(activePlayer.role)}
+  let systemInstruction = '';
+  let prompt = '';
 
-    【戦略・行動指針】
-    ${strategicAdvice}
-    
-    【指示】
-    - フェーズ: 昼の議論
-    - 他のプレイヤーの直近の発言（ログ）をよく読み、会話の流れを止めないでください。
-    - 誰かが質問している場合は答えてください。
-    - 1〜2文の短い日本語の口語で、簡潔に話してください。長演説は禁止です。
-    - あなたの出力はシステムによって解析されます。必ずXML形式で出力してください。
-    
-    【出力テンプレート】
-    <speech>
-    ここに発言内容を入れる
-    </speech>
-  `;
+  if (lang === 'en') {
+    systemInstruction = `
+      This is a fictional "Werewolf" game simulation.
+      Act as player "${activePlayer.name}".
+      
+      [Character Info]
+      Role: ${roleLabel}
+      Personality: ${activePlayer.personality}
+      ${getRoleDescription(activePlayer.role, lang)}
 
-  const context = buildContext(activePlayer, players, logs, currentPhase, currentDay);
-  const prompt = `
-    ${context}
-    
-    上記のログを踏まえ、${activePlayer.name}として発言してください。
-    戦略ガイドラインに従い、${activePlayer.role}として最適な振る舞いを心がけてください。
-  `;
+      [Strategy & Guidelines]
+      ${strategicAdvice}
+      
+      [Instructions]
+      - Phase: Day Discussion.
+      - Read recent logs carefully. Keep the conversation flowing.
+      - If asked a question, answer it.
+      - Speak in short, conversational English (1-2 sentences). No long speeches.
+      - Output MUST be in XML format.
+      
+      [Output Template]
+      <speech>
+      Put your speech content here.
+      </speech>
+    `;
+    prompt = `
+        ${buildContext(activePlayer, players, logs, currentPhase, currentDay, lang)}
+        
+        Based on the logs, speak as ${activePlayer.name}.
+        Follow your strategy as a ${roleLabel}.
+    `;
+  } else {
+    // JAPANESE
+    systemInstruction = `
+      これはフィクションの「人狼ゲーム」のシミュレーションです。
+      あなたはプレイヤー「${activePlayer.name}」として振る舞ってください。
+      
+      【キャラクター情報】
+      役職: ${roleLabel}
+      性格: ${activePlayer.personality}
+      ${getRoleDescription(activePlayer.role, lang)}
+
+      【戦略・行動指針】
+      ${strategicAdvice}
+      
+      【指示】
+      - フェーズ: 昼の議論
+      - 他のプレイヤーの直近の発言（ログ）をよく読み、会話の流れを止めないでください。
+      - 誰かが質問している場合は答えてください。
+      - 1〜2文の短い日本語の口語で、簡潔に話してください。長演説は禁止です。
+      - あなたの出力はシステムによって解析されます。必ずXML形式で出力してください。
+      
+      【出力テンプレート】
+      <speech>
+      ここに発言内容を入れる
+      </speech>
+    `;
+    prompt = `
+      ${buildContext(activePlayer, players, logs, currentPhase, currentDay, lang)}
+      
+      上記のログを踏まえ、${activePlayer.name}として発言してください。
+      戦略ガイドラインに従い、${roleLabel}として最適な振る舞いを心がけてください。
+    `;
+  }
 
   // --- OPENROUTER HANDLING ---
   if (modelName.startsWith('openrouter/')) {
@@ -328,7 +423,8 @@ export const generateAction = async (
   phase: GamePhase,
   currentDay: number,
   modelName: string = 'gemini-2.5-flash',
-  openRouterKey?: string
+  openRouterKey?: string,
+  lang: Language = 'ja'
 ): Promise<{ targetId: string; reasoning: string }> => {
   
   const validTargets = players.filter(p => p.isAlive && p.id !== activePlayer.id).map(p => p.id);
@@ -337,48 +433,57 @@ export const generateAction = async (
   let template = '';
   
   if (phase === GamePhase.DAY_VOTE) {
-      taskDescription = '処刑投票の対象を1名選んでください。直前の議論の内容に基づき、最も怪しい人物を選んでください。理由も簡潔に述べてください。';
-      template = `<vote><target>対象ID</target><reason>理由</reason></vote>`;
+      taskDescription = lang === 'en' 
+        ? 'Choose one player to execute. Pick the most suspicious person based on the discussion. Provide a short reason.'
+        : '処刑投票の対象を1名選んでください。直前の議論の内容に基づき、最も怪しい人物を選んでください。理由も簡潔に述べてください。';
+      template = `<vote><target>TARGET_ID</target><reason>REASON</reason></vote>`;
   } else if (phase === GamePhase.NIGHT_ACTION) {
       switch (activePlayer.role) {
           case Role.WEREWOLF:
-              taskDescription = '今晩襲撃して排除する対象を1名選んでください。占い師や、鋭い村人を狙うのが定石です。';
-              template = `<attack><target>対象ID</target><reason>理由</reason></attack>`;
+              taskDescription = lang === 'en'
+                ? 'Choose a victim to attack tonight. Targeting Seers or sharp villagers is standard strategy.'
+                : '今晩襲撃して排除する対象を1名選んでください。占い師や、鋭い村人を狙うのが定石です。';
+              template = `<attack><target>TARGET_ID</target><reason>REASON</reason></attack>`;
               break;
           case Role.SEER:
-              taskDescription = '今晩占う対象を1名選んでください。白黒はっきりしていない人物（グレー）を占ってください。';
-              template = `<divine><target>対象ID</target><reason>理由</reason></divine>`;
+              taskDescription = lang === 'en'
+                ? 'Choose a player to divine (inspect). Check someone whose role is unknown (Gray).'
+                : '今晩占う対象を1名選んでください。白黒はっきりしていない人物（グレー）を占ってください。';
+              template = `<divine><target>TARGET_ID</target><reason>REASON</reason></divine>`;
               break;
           case Role.BODYGUARD:
-              taskDescription = '今晩護衛する対象を1名選んでください。占い師などの重要人物を守ってください。自分は守れません。';
-              template = `<guard><target>対象ID</target><reason>理由</reason></guard>`;
+              taskDescription = lang === 'en'
+                ? 'Choose a player to protect tonight. Protect important roles like the Seer. You cannot protect yourself.'
+                : '今晩護衛する対象を1名選んでください。占い師などの重要人物を守ってください。自分は守れません。';
+              template = `<guard><target>TARGET_ID</target><reason>REASON</reason></guard>`;
               break;
           default:
-              return { targetId: "NONE", reasoning: "行動なし" };
+              return { targetId: "NONE", reasoning: "No Action" };
       }
   }
 
-  const strategicAdvice = getStrategicAdvice(activePlayer.role, currentDay, phase);
+  const strategicAdvice = getStrategicAdvice(activePlayer.role, currentDay, phase, lang);
+  const roleLabel = lang === 'en' ? ROLE_LABELS_EN[activePlayer.role] : ROLE_LABELS[activePlayer.role];
   
   const systemInstruction = `
-    あなたは「${activePlayer.name}」です。
-    役職: ${ROLE_LABELS[activePlayer.role]}
+    You are "${activePlayer.name}".
+    Role: ${roleLabel}
     
-    【有効ターゲットID】
+    [Valid Target IDs]
     ${JSON.stringify(validTargets)}
     
-    【戦略】
+    [Strategy]
     ${strategicAdvice}
     
-    【タスク】
+    [Task]
     ${taskDescription}
     
-    XMLテンプレートのみを出力してください。
+    Output ONLY XML template.
     ${template}
   `;
 
-  const context = buildContext(activePlayer, players, logs, phase, currentDay);
-  const prompt = `${context}\n\n行動を決定してください。`;
+  const context = buildContext(activePlayer, players, logs, phase, currentDay, lang);
+  const prompt = `${context}\n\nDecide your action.`;
 
   // --- OPENROUTER HANDLING ---
   if (modelName.startsWith('openrouter/')) {
@@ -407,7 +512,7 @@ export const generateAction = async (
         if (!validTargets.includes(tid)) tid = validTargets[0]; // fallback
         return { targetId: tid, reasoning: cleanText(reasonMatch[1]) };
     }
-    return { targetId: validTargets[0], reasoning: "解析エラーのためランダム" };
+    return { targetId: validTargets[0], reasoning: "Parser Error: Random" };
   }
 
   // --- GEMINI HANDLING ---
@@ -439,7 +544,7 @@ export const generateAction = async (
         };
         if (!validTargets.includes(result.targetId)) {
             const randomTarget = validTargets[Math.floor(Math.random() * validTargets.length)];
-            return { targetId: randomTarget, reasoning: `(ID自動修正) ${result.reasoning}` };
+            return { targetId: randomTarget, reasoning: `(Auto-fix ID) ${result.reasoning}` };
         }
         return result;
     }
@@ -451,6 +556,6 @@ export const generateAction = async (
   } catch (error) {
     console.error("Action Error:", error);
     const randomTarget = validTargets[Math.floor(Math.random() * validTargets.length)];
-    return { targetId: randomTarget, reasoning: `（エラー発生のためランダム選択）` };
+    return { targetId: randomTarget, reasoning: `(Error Random)` };
   }
 };

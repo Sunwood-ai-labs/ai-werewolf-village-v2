@@ -4,7 +4,7 @@ import { PlayerCard } from './components/PlayerCard';
 import { GameLog } from './components/GameLog';
 import { useGameMaster } from './hooks/useGameMaster';
 import { SettingsModal } from './components/SettingsModal';
-import { MODELS } from './constants';
+import { UI_STRINGS } from './constants';
 
 const App: React.FC = () => {
   // UI Local State
@@ -28,10 +28,13 @@ const App: React.FC = () => {
       proceed, 
       setDiscussionRounds,
       isTtsEnabled,
-      setIsTtsEnabled
+      setIsTtsEnabled,
+      setLanguage
   } = useGameMaster(openRouterKey);
   
-  const { players, phase, logs, dayCount, winner, activeSpeakerId, currentDiscussionRound, maxDiscussionRounds } = state;
+  const { players, phase, logs, dayCount, winner, activeSpeakerId, currentDiscussionRound, maxDiscussionRounds, language } = state;
+
+  const t = UI_STRINGS[language];
 
   // Auto-play trigger
   useEffect(() => {
@@ -79,6 +82,7 @@ const App: React.FC = () => {
         setRoleCounts={setRoleCounts}
         isTtsEnabled={isTtsEnabled}
         setIsTtsEnabled={setIsTtsEnabled}
+        language={language}
       />
 
       {/* Main Content Wrapper */}
@@ -90,30 +94,30 @@ const App: React.FC = () => {
             
             <div className="flex items-center gap-3">
                <div className="text-2xl filter drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]">🌕</div>
-               <h1 className="font-horror text-2xl text-indigo-400 tracking-widest font-bold drop-shadow-sm">AI 人狼村</h1>
+               <h1 className="font-horror text-2xl text-indigo-400 tracking-widest font-bold drop-shadow-sm">{t.title}</h1>
             </div>
 
             <div className="flex items-center gap-4 text-sm bg-slate-950/50 px-4 py-1.5 rounded-full border border-slate-800">
                <div className="flex flex-col items-end">
-                  <span className="font-bold text-amber-500 uppercase tracking-widest text-[8px]">フェーズ</span>
+                  <span className="font-bold text-amber-500 uppercase tracking-widest text-[8px]">{t.phase}</span>
                   <span className="text-sm font-bold">
-                      {phase === GamePhase.DAY_DISCUSSION && "昼：議論"}
-                      {phase === GamePhase.DAY_VOTE && "夕方：投票"}
-                      {phase === GamePhase.NIGHT_ACTION && "夜：行動"}
-                      {phase === GamePhase.GAME_OVER && "終了"}
-                      {phase === GamePhase.SETUP && "準備中"}
+                      {phase === GamePhase.DAY_DISCUSSION && t.phaseDayDiscussion}
+                      {phase === GamePhase.DAY_VOTE && t.phaseDayVote}
+                      {phase === GamePhase.NIGHT_ACTION && t.phaseNightAction}
+                      {phase === GamePhase.GAME_OVER && t.phaseGameOver}
+                      {phase === GamePhase.SETUP && t.phaseSetup}
                   </span>
                </div>
                {phase === GamePhase.DAY_DISCUSSION && (
                    <div className="flex flex-col items-end animate-in fade-in">
-                      <span className="font-bold text-slate-500 uppercase tracking-widest text-[8px]">ラウンド</span>
+                      <span className="font-bold text-slate-500 uppercase tracking-widest text-[8px]">{t.round}</span>
                       <span className="text-sm font-mono text-indigo-300">{currentDiscussionRound} / {maxDiscussionRounds}</span>
                    </div>
                )}
                <div className="h-6 w-px bg-slate-700 mx-1"></div>
                <div className="flex flex-col items-end">
-                  <span className="font-bold text-slate-500 uppercase tracking-widest text-[8px]">日数</span>
-                  <span className="text-sm font-mono">{dayCount}日目</span>
+                  <span className="font-bold text-slate-500 uppercase tracking-widest text-[8px]">{t.day}</span>
+                  <span className="text-sm font-mono">{dayCount}{t.daySuffix}</span>
                </div>
             </div>
           </div>
@@ -130,29 +134,45 @@ const App: React.FC = () => {
                 <div className="flex gap-2">
                    {phase === GamePhase.SETUP ? (
                       <button onClick={initGame} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-indigo-900/20 transition-all active:scale-95">
-                         ゲーム開始
+                         {t.btnStart}
                       </button>
                    ) : (
                       <>
                         <button onClick={() => setAutoPlay(!autoPlay)} className={`px-4 py-2 rounded-lg font-bold border transition-colors ${autoPlay ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'}`}>
-                           {autoPlay ? '⏸ 自動再生 ON' : '▶ 自動再生 OFF'}
+                           {autoPlay ? t.btnAutoOn : t.btnAutoOff}
                         </button>
                         <button onClick={() => proceed()} disabled={autoPlay || phase === GamePhase.GAME_OVER} className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold border border-slate-600 transition-colors">
-                           次へ進む
+                           {t.btnNext}
                         </button>
                         <button onClick={() => initGame()} className="text-red-400 hover:text-red-300 px-4 py-2 text-sm">
-                           リセット
+                           {t.btnReset}
                         </button>
                       </>
                    )}
                 </div>
 
-                <div className="flex items-center">
+                <div className="flex items-center gap-3">
+                    {/* Language Toggle */}
+                    <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
+                        <button 
+                            onClick={() => setLanguage('ja')}
+                            className={`px-3 py-1 rounded text-xs font-bold transition-all ${language === 'ja' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            JP
+                        </button>
+                        <button 
+                            onClick={() => setLanguage('en')}
+                            className={`px-3 py-1 rounded text-xs font-bold transition-all ${language === 'en' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            EN
+                        </button>
+                    </div>
+
                     <button 
                       onClick={() => setIsSettingsOpen(true)}
                       className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-4 py-2 rounded-lg transition-colors"
                     >
-                      <span>⚙️ 設定</span>
+                      <span>{t.btnSettings}</span>
                     </button>
                 </div>
              </div>
@@ -164,10 +184,9 @@ const App: React.FC = () => {
                     <div className="text-center space-y-4">
                         <div className="text-7xl animate-bounce filter drop-shadow-lg">🐺</div>
                         <div className="space-y-2">
-                          <h2 className="text-2xl font-bold text-slate-200">AI人狼村へようこそ</h2>
+                          <h2 className="text-2xl font-bold text-slate-200">{t.heroTitle}</h2>
                           <p className="text-slate-400 max-w-md mx-auto">
-                            <span className="text-indigo-400 font-bold border-b border-indigo-400/30 pb-0.5">ゲーム開始</span> をクリックして、<br/>
-                            AIたちによる命がけの推理ゲームを始めましょう。
+                            <span className="text-indigo-400 font-bold border-b border-indigo-400/30 pb-0.5">{t.btnStart}</span> {t.heroDesc}
                           </p>
                         </div>
                     </div>
@@ -179,6 +198,7 @@ const App: React.FC = () => {
                               player={player} 
                               isGodMode={isGodMode || phase === GamePhase.GAME_OVER} 
                               isSpeaking={player.id === activeSpeakerId}
+                              language={language}
                             />
                         ))}
                     </div>
@@ -195,13 +215,13 @@ const App: React.FC = () => {
                     <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center rounded-2xl backdrop-blur-md animate-in fade-in duration-700 p-8 text-center">
                         <div className="mb-6 text-6xl">{winner === 'WEREWOLVES' ? '🐺' : '🧑‍🌾'}</div>
                         <h2 className={`text-4xl sm:text-6xl font-horror mb-4 font-bold tracking-wider ${winner === 'WEREWOLVES' ? 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'text-green-400 drop-shadow-[0_0_15px_rgba(74,222,128,0.5)]'}`}>
-                            {winner === 'WEREWOLVES' ? 'WEREWOLVES WIN' : 'VILLAGERS WIN'}
+                            {winner === 'WEREWOLVES' ? t.winWolfTitle : t.winVillagerTitle}
                         </h2>
                         <p className="text-slate-300 mb-8 text-xl font-bold">
-                            {winner === 'WEREWOLVES' ? '人狼チームの勝利' : '村人チームの勝利'}
+                            {winner === 'WEREWOLVES' ? t.winWolf : t.winVillager}
                         </p>
                         <button onClick={initGame} className="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold hover:scale-105 transition-transform hover:bg-indigo-500 shadow-lg shadow-indigo-900/50">
-                            もう一度プレイ
+                            {t.btnReplay}
                         </button>
                     </div>
                 )}
@@ -210,7 +230,7 @@ const App: React.FC = () => {
 
           {/* Right: Logs - Flex column to fill remaining height */}
           <div className="lg:col-span-1 flex flex-col h-full overflow-hidden shadow-2xl rounded-lg">
-             <GameLog logs={logs} players={players} activeSpeakerId={activeSpeakerId} />
+             <GameLog logs={logs} players={players} activeSpeakerId={activeSpeakerId} language={language} />
           </div>
         </main>
       </div>
