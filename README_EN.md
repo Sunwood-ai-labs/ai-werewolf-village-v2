@@ -7,7 +7,8 @@
 An autonomous "Werewolf" (Mafia) game simulator powered by Gemini 2.5 Flash.
 Unique AI agents play as Villagers or Werewolves, engaging in debates, deductions, and deception to win the game.
 
-![Game Screenshot](demo.png)
+
+![Game Screenshot](https://github.com/user-attachments/assets/8075124d-6bbe-49db-8dc5-302eba34af6e)
 
 ## ✨ Features
 
